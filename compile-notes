@@ -1,0 +1,46 @@
+#!/bin/sh
+
+# Directory containing markdown files
+INPUT_DIR=$1
+
+# Output directory for HTML files
+OUTPUT_DIR=$2
+
+CSS_FILE_NAME="index.css"
+
+# Create the output directory if it doesn't exist
+mkdir -p "$OUTPUT_DIR"
+
+# File to store the index of HTML files
+INDEX_FILE="$OUTPUT_DIR/index.html"
+
+# Start the index file
+echo "<html><head><link rel='stylesheet' type='text/css' href='$CSS_FILE_NAME' /></head><body><h1>Notes</h1><ul>" > "$INDEX_FILE"
+
+cp $INPUT_DIR/$CSS_FILE_NAME $OUTPUT_DIR/$CSS_FILE_NAME
+
+# Loop through markdown files in the directory
+for mdfile in "$INPUT_DIR"/*.md; do
+	# Check if the file contains YAML metadata and LaTeX
+	filename=$(basename "$mdfile" .md)
+
+	# Extract the title from YAML metadata
+	title=$(sed -n '/---/,/---/p' "$mdfile" | grep 'title:' | sed 's/title: //')
+	date=$(sed -n '/---/,/---/p' "$mdfile" | grep 'date:' | sed 's/date: //')
+
+	# Use filename as title if no title is found
+	if [ -z "$title" ]; then
+		title="$filename"
+	fi
+
+	# Convert markdown to HTML with Pandoc and MathJax
+	pandoc "$mdfile" --to=html5 --mathjax --toc --columns=100 --standalone --css="index.css" -o "$OUTPUT_DIR/$filename.html"
+
+	# Add a link to this file in the index
+	echo "<li><a href='$filename.html'>$title</a> ($date)</li>" >> "$INDEX_FILE"
+done
+
+# Close the index file
+echo "</ul></body></html>" >> "$INDEX_FILE"
+
+echo "Conversion completed. Index file generated at $INDEX_FILE"
